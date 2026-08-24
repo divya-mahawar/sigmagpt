@@ -17,7 +17,9 @@ app.use(cors());
 // ================= ROUTES =================
 
 app.use("/api", chatRoutes);
-
+app.get("/", (req, res) => {
+    res.send("SigmaGPT Backend is running!");
+});
 
 // ================= DATABASE =================
 
