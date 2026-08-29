@@ -3,7 +3,7 @@ import "dotenv/config";
 import cors from "cors";
 import mongoose from "mongoose";
 import chatRoutes from "./routes/chat.js";
-
+import authRoutes from "./routes/Auth.js";
 const app = express();
 const PORT = 8080;
 
@@ -17,6 +17,7 @@ app.use(cors());
 // ================= ROUTES =================
 
 app.use("/api", chatRoutes);
+app.use("/api/auth", authRoutes);
 app.get("/", (req, res) => {
     res.send("SigmaGPT Backend is running!");
 });
