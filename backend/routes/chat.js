@@ -4,50 +4,9 @@ import getGeminiAPIResponse from "../utils/gemini.js";
 import verifyToken from "../middleware/auth.js"; // Auth middleware import kiya
 
 const router = express.Router();
+console.log("CHAT ROUTES FILE LOADED");
 
-router.post("/register", async (req, res) => {
-    try {
-        const { username, email, password } = req.body;
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            return res.status(400).json({ error: "Email already registered!" });
-        }
 
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-
-        const newUser = new User({ username, email, password: hashedPassword });
-        await newUser.save();
-        
-        res.status(201).json({ message: "User registered successfully!" });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-router.post("/login", async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(400).json({ error: "Invalid email or password!" });
-        }
-
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ error: "Invalid email or password!" });
-        }
-
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || "secret_key_here", { expiresIn: "1d" });
-
-        res.json({
-            message: "Logged in successfully!",
-            token,
-            user: { id: user._id, username: user.username, email: user.email }
-        });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
 
 // ================= TEST =================
 
@@ -200,6 +159,63 @@ router.post("/chat", verifyToken, async (req, res) => {
         console.log("Chat Error:", err);
         res.status(500).json({
             error: "Something went wrong"
+        });
+    }
+});
+
+
+router.post("/explain-selection", verifyToken, async (req, res) => {
+    try {
+        console.log("===== EXPLAIN SELECTION START =====");
+
+        console.log("Request body:", req.body);
+        console.log("User:", req.user);
+
+        const { selectedText, question } = req.body;
+
+        console.log("Selected text:", selectedText);
+        console.log("Question:", question);
+
+        if (!selectedText || !question) {
+            console.log("Missing selectedText or question");
+
+            return res.status(400).json({
+                error: "Selected text and question are required"
+            });
+        }
+
+        const instruction = `
+The user selected this text:
+
+"${selectedText}"
+
+The user wants to know:
+
+"${question}"
+
+Answer the user's question specifically using the selected text as context.
+Explain clearly and simply.
+`;
+
+        console.log("Instruction created");
+        console.log("Calling Gemini...");
+
+        const explanation = await getGeminiAPIResponse(instruction);
+
+        console.log("Gemini response received:", explanation);
+
+        res.json({
+            explanation
+        });
+
+    } catch (err) {
+        console.log("===== EXPLAIN SELECTION ERROR =====");
+        console.log(err);
+        console.log("Error message:", err.message);
+        console.log("Error stack:", err.stack);
+
+        res.status(500).json({
+            error: err.message
         });
     }
 });

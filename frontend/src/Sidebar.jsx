@@ -1,27 +1,38 @@
 import "./Sidebar.css";
-import { useContext, useEffect } from "react";
+import { useContext, useEffect} from "react";
 import { MyContext } from "./MyContext.jsx";
-import {v1 as uuidv1} from "uuid";
+import { v1 as uuidv1 } from "uuid";
 
 function Sidebar() {
-    const {allThreads, setAllThreads, currThreadId, setNewChat, setPrompt, setReply, setCurrThreadId, setPrevChats} = useContext(MyContext);
+    const { allThreads, setAllThreads, currThreadId, setNewChat, setPrompt, setReply, setCurrThreadId, setPrevChats } = useContext(MyContext);
+
+    // Helper function to get auth headers
+    const getAuthHeaders = () => {
+        const token = localStorage.getItem("token");
+        return {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+        };
+    };
 
     const getAllThreads = async () => {
         try {
-            const response = await fetch("https://sigmagpt-l8z8.onrender.com/api/thread");
+            const response = await fetch("https://sigmagpt-l8z8.onrender.com/api/thread", {
+                headers: getAuthHeaders()
+            });
             const res = await response.json();
-            const filteredData = res.map(thread => ({threadId: thread.threadId, title: thread.title}));
-            //console.log(filteredData);
-            setAllThreads(filteredData);
-        } catch(err) {
+            if (response.ok) {
+                const filteredData = res.map(thread => ({ threadId: thread.threadId, title: thread.title }));
+                setAllThreads(filteredData);
+            }
+        } catch (err) {
             console.log(err);
         }
     };
 
-    useEffect(() => {
+useEffect(() => {
         getAllThreads();
-    }, [currThreadId])
-
+    }, []);
 
     const createNewChat = () => {
         setNewChat(true);
@@ -35,31 +46,38 @@ function Sidebar() {
         setCurrThreadId(newThreadId);
 
         try {
-            const response = await fetch(`https://sigmagpt-l8z8.onrender.com/api/thread/${newThreadId}`);
+            const response = await fetch(`https://sigmagpt-l8z8.onrender.com/api/thread/${newThreadId}`, {
+                headers: getAuthHeaders()
+            });
             const res = await response.json();
-            console.log(res);
-            setPrevChats(res);
-            setNewChat(false);
-            setReply(null);
-        } catch(err) {
+            if (response.ok) {
+                setPrevChats(res);
+                setNewChat(false);
+                setReply(null);
+            }
+        } catch (err) {
             console.log(err);
         }
     }   
 
     const deleteThread = async (threadId) => {
         try {
-            const response = await fetch(`https://sigmagpt-l8z8.onrender.com/api/thread/${newThreadId}`, {method: "DELETE"});
+            // FIX: newThreadId ki jagah threadId use kiya hai
+            const response = await fetch(`https://sigmagpt-l8z8.onrender.com/api/thread/${threadId}`, { 
+                method: "DELETE",
+                headers: getAuthHeaders()
+            });
             const res = await response.json();
-            console.log(res);
+            
+            if (response.ok) {
+                // updated threads re-render
+                setAllThreads(prev => prev.filter(thread => thread.threadId !== threadId));
 
-            //updated threads re-render
-            setAllThreads(prev => prev.filter(thread => thread.threadId !== threadId));
-
-            if(threadId === currThreadId) {
-                createNewChat();
+                if (threadId === currThreadId) {
+                    createNewChat();
+                }
             }
-
-        } catch(err) {
+        } catch (err) {
             console.log(err);
         }
     }
@@ -70,7 +88,6 @@ function Sidebar() {
                 <img src="src/assets/blacklogo.png" alt="gpt logo" className="logo"></img>
                 <span><i className="fa-solid fa-pen-to-square"></i></span>
             </button>
-
 
             <ul className="history">
                 {
@@ -92,7 +109,7 @@ function Sidebar() {
             </ul>
  
             <div className="sign">
-                <p>By ApnaCollege &hearts;</p>
+                <p>By Divya &hearts;</p>
             </div>
         </section>
     )

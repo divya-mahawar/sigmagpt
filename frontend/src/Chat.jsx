@@ -4,10 +4,25 @@ import { MyContext } from "./MyContext";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github-dark.css";
+import useTextSelection from "./contextualLearning/useTextSelection";
+
+import SelectionPopup from "./contextualLearning/SelectionPopup.jsx";
+import ContextLearning from "./contextualLearning/ContextLearning.jsx";
 
 function Chat() {
+     const selection = useTextSelection();
+
     const {newChat, prevChats, reply} = useContext(MyContext);
     const [latestReply, setLatestReply] = useState(null);
+  const [isContextOpen, setIsContextOpen] = useState(false);
+const [contextText, setContextText] = useState("");
+
+
+      const handleExplain = () => {
+        console.log("Explain clicked for:", selection.text);
+        setContextText(selection.text);
+        setIsContextOpen(true);
+    };
 
     useEffect(() => {
         if(reply === null) {
@@ -35,6 +50,17 @@ function Chat() {
         <>
             {newChat && <h1>Start a New Chat!</h1>}
             <div className="chats">
+            <SelectionPopup
+    position={selection.position}
+    onExplain={handleExplain}
+/>
+
+{isContextOpen && (
+    <ContextLearning
+        selectedText={contextText}
+        onClose={() => setIsContextOpen(false)}
+    />
+)}
                 {
                     prevChats?.slice(0, -1).map((chat, idx) => 
                         <div className={chat.role === "user"? "userDiv" : "gptDiv"} key={idx}>

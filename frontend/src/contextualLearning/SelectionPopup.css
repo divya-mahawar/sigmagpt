@@ -1,0 +1,23 @@
+.selectionPopup {
+    position: fixed;
+    z-index: 1000;
+    background: #2f2f2f;
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 5px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.selectionPopup button {
+    border: none;
+    background: transparent;
+    color: white;
+    padding: 7px 10px;
+    cursor: pointer;
+    font-size: 13px;
+    border-radius: 6px;
+}
+
+.selectionPopup button:hover {
+    background: #444;
+}
