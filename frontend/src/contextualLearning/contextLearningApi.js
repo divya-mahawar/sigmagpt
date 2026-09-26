@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:8080/api";
+const API_URL = "https://sigmagpt-l8z8.onrender.com/api";
 
 export const explainSelectedText = async (selectedText, question) => {
     const token = localStorage.getItem("token");
