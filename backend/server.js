@@ -5,13 +5,22 @@ import mongoose from "mongoose";
 import chatRoutes from "./routes/chat.js";
 import authRoutes from "./routes/Auth.js";
 const app = express();
-const PORT = 8080;
+const PORT = process.env.PORT || 8080;
 
 
 // ================= MIDDLEWARE =================
 
 app.use(express.json());
-app.use(cors());
+const allowedOrigins = [
+    "http://localhost:5173",
+    "https://sigmagpt-three.vercel.app"
+];
+
+app.use(
+    cors({
+        origin: allowedOrigins
+    })
+);
 
 
 // ================= ROUTES =================
@@ -26,25 +35,22 @@ app.get("/", (req, res) => {
 
 const connectDB = async () => {
     try {
-
         await mongoose.connect(process.env.MONGODB_URI);
 
         console.log("Connected with Database!");
 
+        app.listen(PORT, () => {
+            console.log(`Server running on port ${PORT}`);
+        });
+
     } catch (err) {
+        console.error(
+            "Failed to connect with Database:",
+            err.message
+        );
 
-        console.log("Failed to connect with Db:", err);
-
+        process.exit(1);
     }
 };
 
-
-// ================= SERVER =================
-
-app.listen(PORT, () => {
-
-    console.log(`server running on ${PORT}`);
-
-    connectDB();
-
-});
+connectDB();

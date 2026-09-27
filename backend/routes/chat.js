@@ -1,7 +1,8 @@
 import express from "express";
 import Thread from "../models/Thread.js";
 import getGeminiAPIResponse from "../utils/gemini.js";
-import verifyToken from "../middleware/auth.js"; // Auth middleware import kiya
+import verifyToken from "../middleware/auth.js"; 
+import { chatLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
 console.log("CHAT ROUTES FILE LOADED");
@@ -100,125 +101,164 @@ router.delete("/thread/:threadId", verifyToken, async (req, res) => {
 
 
 // ================= CHAT (Protected) =================
-router.post("/chat", verifyToken, async (req, res) => {
+router.post("/chat", verifyToken,  chatLimiter, async (req, res) => {
+
     const { threadId, message } = req.body;
 
     // Validate request
-    if (!threadId || !message) {
+    if (
+        typeof threadId !== "string" ||
+        !threadId.trim() ||
+        typeof message !== "string" ||
+        !message.trim()
+    ) {
         return res.status(400).json({
-            error: "Missing required fields"
+            error: "Valid threadId and message are required."
+        });
+    }
+
+    const cleanMessage = message.trim();
+
+    if (cleanMessage.length > 4000) {
+        return res.status(400).json({
+            error: "Message is too long. Maximum 4000 characters allowed."
         });
     }
 
     try {
-        // Find existing thread for this specific user
-        let thread = await Thread.findOne({ threadId, userId: req.user.id });
 
-        // If thread doesn't exist, create it with userId
+        let thread = await Thread.findOne({
+            threadId,
+            userId: req.user.id
+        });
+
         if (!thread) {
+
             thread = new Thread({
-                userId: req.user.id, // User ID bind kar di
+                userId: req.user.id,
                 threadId,
-                title: message,
+                title: cleanMessage,
                 messages: [
                     {
                         role: "user",
-                        content: message
+                        content: cleanMessage
                     }
                 ]
             });
+
         } else {
-            // Existing thread, push user message
+
             thread.messages.push({
                 role: "user",
-                content: message
+                content: cleanMessage
             });
         }
 
-        // ================= GEMINI =================
-        const assistantReply = await getGeminiAPIResponse(message);
+        // Gemini
+        const assistantReply =
+            await getGeminiAPIResponse(cleanMessage);
 
-        // Save Gemini response
         thread.messages.push({
             role: "assistant",
             content: assistantReply
         });
 
-        // Update timestamp
         thread.updatedAt = new Date();
 
-        // Save thread
         await thread.save();
 
-        // Send response to frontend
         res.json({
             reply: assistantReply
         });
 
-    } catch (err) {
-        console.log("Chat Error:", err);
-        res.status(500).json({
-            error: "Something went wrong"
+    }  catch (err) {
+    console.error("Chat Error:", err.message);
+
+    if (err.status === 429) {
+        return res.status(429).json({
+            error: "AI service is temporarily rate-limited. Please try again later."
         });
     }
+
+    res.status(500).json({
+        error: "Something went wrong while generating the response."
+    });
+}
 });
 
 
 router.post("/explain-selection", verifyToken, async (req, res) => {
     try {
-        console.log("===== EXPLAIN SELECTION START =====");
-
-        console.log("Request body:", req.body);
-        console.log("User:", req.user);
 
         const { selectedText, question } = req.body;
 
-        console.log("Selected text:", selectedText);
-        console.log("Question:", question);
+        const cleanSelectedText =
+            typeof selectedText === "string"
+                ? selectedText.trim()
+                : "";
 
-        if (!selectedText || !question) {
-            console.log("Missing selectedText or question");
+        const cleanQuestion =
+            typeof question === "string"
+                ? question.trim()
+                : "";
 
+        // Validation
+        if (!cleanSelectedText || !cleanQuestion) {
             return res.status(400).json({
-                error: "Selected text and question are required"
+                error: "Selected text and question are required."
+            });
+        }
+
+        // Prevent extremely large input
+        if (cleanSelectedText.length > 6000) {
+            return res.status(400).json({
+                error: "Selected text is too long."
+            });
+        }
+
+        if (cleanQuestion.length > 500) {
+            return res.status(400).json({
+                error: "Question is too long."
             });
         }
 
         const instruction = `
 The user selected this text:
 
-"${selectedText}"
+"${cleanSelectedText}"
 
 The user wants to know:
 
-"${question}"
+"${cleanQuestion}"
 
 Answer the user's question specifically using the selected text as context.
 Explain clearly and simply.
 `;
 
-        console.log("Instruction created");
-        console.log("Calling Gemini...");
-
-        const explanation = await getGeminiAPIResponse(instruction);
-
-        console.log("Gemini response received:", explanation);
+        const explanation =
+            await getGeminiAPIResponse(instruction);
 
         res.json({
             explanation
         });
 
     } catch (err) {
-        console.log("===== EXPLAIN SELECTION ERROR =====");
-        console.log(err);
-        console.log("Error message:", err.message);
-        console.log("Error stack:", err.stack);
 
-        res.status(500).json({
-            error: err.message
+    console.error(
+        "Explain selection error:",
+        err.message
+    );
+
+    if (err.status === 429) {
+        return res.status(429).json({
+            error: "AI service is temporarily rate-limited. Please try again later."
         });
     }
-});
 
+    res.status(500).json({
+        error: "Failed to generate explanation."
+    });
+}
+});
 
 export default router;

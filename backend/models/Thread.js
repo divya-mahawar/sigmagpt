@@ -68,6 +68,10 @@ const ThreadSchema = new mongoose.Schema(
 ThreadSchema.pre("save", function () {
     this.updatedAt = new Date();
 });
+ThreadSchema.index({
+    userId: 1,
+    updatedAt: -1
+});
 
 
 const Thread = mongoose.model("Thread", ThreadSchema);

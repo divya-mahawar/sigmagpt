@@ -5,7 +5,16 @@ import { useContext, useState, useEffect } from "react";
 import { ScaleLoader } from "react-spinners";
 
 function ChatWindow() {
-    const { prompt, setPrompt, reply, setReply, currThreadId, setPrevChats, setNewChat } = useContext(MyContext);
+   const {
+    prompt,
+    setPrompt,
+    reply,
+    setReply,
+    currThreadId,
+    setPrevChats,
+    setNewChat,
+    setIsAuthenticated
+} = useContext(MyContext);
     const [loading, setLoading] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const [isListening, setIsListening] = useState(false); // Voice state
@@ -61,12 +70,26 @@ function ChatWindow() {
 
         console.log("5. Backend response:", res);
 
-        if (response.ok) {
-            setReply(res.reply);
-        } else {
-            console.log("Backend error:", res.error || "Failed to get response");
-        }
+       if (response.ok) {
 
+    setReply(res.reply);
+
+} else if (response.status === 401 || response.status === 403) {
+
+    console.log("Token invalid or expired. Logging out...");
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    setIsAuthenticated(false);
+
+} else {
+
+    console.log(
+        "Backend error:",
+        res.error || "Failed to get response"
+    );
+}
     } catch (err) {
 
         // Handle request timeout
