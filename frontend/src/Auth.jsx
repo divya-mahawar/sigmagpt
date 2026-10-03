@@ -13,7 +13,9 @@ export default function Auth({ onLoginSuccess }) {
         setError("");
         setLoading(true);
 
-        const endpoint = isLogin ? "http://localhost:8080/api/auth/login" : "http://localhost:8080/api/auth/register";
+      const endpoint = isLogin
+  ? "https://sigmagpt-l8z8.onrender.com/api/auth/login"
+  : "https://sigmagpt-l8z8.onrender.com/api/auth/register";
         
         const payload = isLogin 
             ? { email, password } 
